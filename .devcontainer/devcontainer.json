@@ -1,0 +1,36 @@
+{
+  "name": "weightmelters",
+  "build": { "dockerfile": "Dockerfile" },
+  "workspaceFolder": "/workspaces/weightmelters",
+
+  "features": {
+    "ghcr.io/jsburckhardt/devcontainer-features/uv:1": {},
+    "ghcr.io/jsburckhardt/devcontainer-features/ruff:1": {}
+  },
+
+  "mounts": [
+    "type=bind,source=${localEnv:SSH_AUTH_SOCK},target=/ssh-agent",
+    "source=${localEnv:HOME}/.ssh,target=/home/mbuettner/.ssh,type=bind,consistency=cached",
+    "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"
+  ],
+
+  "remoteEnv": { "SSH_AUTH_SOCK": "/ssh-agent" },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspaces/weightmelters/.venv/bin/python"
+      }
+    }
+  },
+
+  "postCreateCommand": "uv sync --locked || uv sync",
+
+  "postStartCommand": "bash /workspaces/weightmelters/.devcontainer/poststart.sh"
+}
