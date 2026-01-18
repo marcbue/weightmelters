@@ -1,5 +1,88 @@
 {% if graph_html %}
-  {{ graph_html|safe }}
+  <div class="weight-graph-wrapper">
+    {{ graph_html|safe }}
+    <div class="weight-tooltip" id="weight-tooltip">
+      <div class="weight-tooltip-content">
+        <img class="weight-tooltip-avatar" id="tooltip-avatar" src="" alt="Avatar" />
+        <div class="weight-tooltip-info">
+          <span class="weight-tooltip-name" id="tooltip-name"></span>
+          <span class="weight-tooltip-email" id="tooltip-email"></span>
+          <span class="weight-tooltip-data" id="tooltip-data"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function() {
+      function setupTooltipHandlers(graphDiv) {
+        const tooltip = document.getElementById('weight-tooltip');
+        const tooltipAvatar = document.getElementById('tooltip-avatar');
+        const tooltipName = document.getElementById('tooltip-name');
+        const tooltipEmail = document.getElementById('tooltip-email');
+        const tooltipData = document.getElementById('tooltip-data');
+
+        if (!graphDiv || !tooltip || !graphDiv.on) return false;
+
+        graphDiv.on('plotly_hover', function(data) {
+          if (!data.points || data.points.length === 0) return;
+
+          const point = data.points[0];
+          const customdata = point.customdata;
+
+          if (!customdata) return;
+
+          // Update tooltip content
+          tooltipAvatar.src = customdata.avatar_url || '';
+          tooltipName.textContent = customdata.display_name || '';
+          tooltipEmail.textContent = customdata.email || '';
+
+          // Format date and weight
+          const weight = point.y.toFixed(1);
+          const date = point.x;
+          tooltipData.textContent = weight + ' kg | ' + date;
+
+          // Position tooltip near the point
+          const xaxis = graphDiv._fullLayout.xaxis;
+          const yaxis = graphDiv._fullLayout.yaxis;
+          const l = graphDiv._fullLayout.margin.l;
+          const t = graphDiv._fullLayout.margin.t;
+
+          // Convert data coordinates to pixel coordinates
+          const xPixel = xaxis.l2p(xaxis.d2l(point.x)) + l;
+          const yPixel = yaxis.l2p(yaxis.d2l(point.y)) + t;
+
+          // Offset tooltip to not cover the point
+          tooltip.style.left = (xPixel + 15) + 'px';
+          tooltip.style.top = (yPixel - 30) + 'px';
+          tooltip.style.display = 'block';
+        });
+
+        graphDiv.on('plotly_unhover', function() {
+          tooltip.style.display = 'none';
+        });
+
+        return true;
+      }
+
+      function trySetup(attempts) {
+        const graphDiv = document.querySelector('.weight-graph-wrapper .plotly-graph-div');
+        if (setupTooltipHandlers(graphDiv)) {
+          return;
+        }
+        // Retry if Plotly hasn't initialized yet (max 10 attempts)
+        if (attempts < 10) {
+          setTimeout(function() {
+            trySetup(attempts + 1);
+          }, 100);
+        }
+      }
+
+      // Start trying after a brief delay to let Plotly initialize
+      setTimeout(function() {
+        trySetup(0);
+      }, 50);
+    })();
+  </script>
 {% else %}
   <div class="text-center text-muted py-5">
     <p>No weight entries yet. Log your first weight to see the graph.</p>

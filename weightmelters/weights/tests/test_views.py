@@ -1,8 +1,12 @@
 import datetime
+import hashlib
 from decimal import Decimal
 from http import HTTPStatus
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
+from avatar.models import Avatar
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
@@ -10,6 +14,7 @@ from django.utils import timezone
 from weightmelters.users.tests.factories import UserFactory
 from weightmelters.weights.models import WeightEntry
 from weightmelters.weights.tests.factories import WeightEntryFactory
+from weightmelters.weights.views import get_user_avatar_url
 
 
 @pytest.mark.django_db
@@ -205,3 +210,78 @@ class TestHomeView:
         assert response.status_code == HTTPStatus.OK
         content = response.content.decode()
         assert "75.5" in content or "75.50" in content
+
+
+@pytest.mark.django_db
+class TestGetUserAvatarUrl:
+    def test_returns_gravatar_when_no_avatar(self):
+        """Test that Gravatar URL is returned when user has no avatar."""
+        user = UserFactory(email="test@example.com")
+
+        with patch("weightmelters.weights.views.Avatar") as mock_avatar_model:
+            mock_avatar_model.DoesNotExist = Avatar.DoesNotExist
+            mock_avatar_model.objects.get.side_effect = Avatar.DoesNotExist
+
+            url = get_user_avatar_url(user, size=40)
+
+        email_hash = hashlib.md5(b"test@example.com").hexdigest()  # noqa: S324
+        expected_url = f"https://www.gravatar.com/avatar/{email_hash}?d=identicon&s=40"
+        assert url == expected_url
+
+    def test_returns_uploaded_avatar_when_exists(self):
+        """Test that uploaded avatar URL is returned when exists."""
+        user = UserFactory()
+        mock_avatar = MagicMock()
+        mock_avatar.avatar.url = "/media/avatars/test.jpg"
+
+        with patch("weightmelters.weights.views.Avatar") as mock_avatar_model:
+            mock_avatar_model.objects.get.return_value = mock_avatar
+            mock_avatar_model.DoesNotExist = Avatar.DoesNotExist
+
+            url = get_user_avatar_url(user, size=40)
+
+        mock_avatar.avatar.open.assert_called_once()
+        mock_avatar.avatar.close.assert_called_once()
+        assert url == "/media/avatars/test.jpg"
+
+
+@pytest.mark.django_db
+class TestWeightGraphCustomData:
+    def test_graph_contains_email_in_customdata(self, client: Client):
+        """Test graph response contains user email in customdata."""
+        user = UserFactory(name="Test User", email="test@example.com")
+        WeightEntryFactory(user=user, weight=Decimal("70.0"))
+        client.force_login(user)
+
+        url = reverse("weights:graph")
+        response = client.get(url)
+
+        content = response.content.decode()
+        assert "test@example.com" in content
+
+    def test_graph_uses_closest_hovermode(self, client: Client):
+        """Test graph uses closest hovermode for individual point hover."""
+        user = UserFactory()
+        WeightEntryFactory(user=user, weight=Decimal("70.0"))
+        client.force_login(user)
+
+        url = reverse("weights:graph")
+        response = client.get(url)
+
+        content = response.content.decode()
+        assert '"hovermode":"closest"' in content.replace(" ", "").replace("'", '"')
+
+    def test_graph_contains_avatar_url_in_customdata(self, client: Client):
+        """Test graph response contains avatar URL in customdata."""
+        user = UserFactory(email="avatar@example.com")
+        WeightEntryFactory(user=user, weight=Decimal("70.0"))
+        client.force_login(user)
+
+        url = reverse("weights:graph")
+        response = client.get(url)
+
+        content = response.content.decode()
+        # Should contain gravatar URL since user has no uploaded avatar
+        # Plotly escapes slashes as \\u002f in JSON
+        assert "gravatar.com" in content
+        assert "avatar" in content

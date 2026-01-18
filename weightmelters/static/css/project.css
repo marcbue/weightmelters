@@ -41,3 +41,65 @@
 #user-avatar img {
   border-radius: 50%;
 }
+
+/* Weight Graph Styles */
+.weight-graph-wrapper {
+  position: relative;
+}
+
+/* Weight Graph Tooltip Styles */
+.weight-tooltip {
+  position: absolute;
+  display: none;
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  pointer-events: none;
+  min-width: 200px;
+}
+
+.weight-tooltip-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.weight-tooltip-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.weight-tooltip-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.weight-tooltip-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #212529;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weight-tooltip-email {
+  font-size: 0.8rem;
+  color: #6c757d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weight-tooltip-data {
+  font-size: 0.85rem;
+  color: #495057;
+  margin-top: 2px;
+}

@@ -1,7 +1,9 @@
 import datetime
+import hashlib
 import json
 
 import plotly.graph_objects as go
+from avatar.models import Avatar
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -12,6 +14,33 @@ from django.views.decorators.http import require_http_methods
 
 from weightmelters.weights.forms import WeightEntryForm
 from weightmelters.weights.models import WeightEntry
+
+
+def get_gravatar_url(email: str, size: int = 40) -> str:
+    """Get Gravatar URL for an email address."""
+    # MD5 is required by Gravatar's API spec
+    email_hash = hashlib.md5(email.lower().encode()).hexdigest()  # noqa: S324
+    return f"https://www.gravatar.com/avatar/{email_hash}?d=identicon&s={size}"
+
+
+def get_user_avatar_url(user, size: int = 40) -> str:
+    """Get avatar URL for user, falling back to Gravatar."""
+    try:
+        avatar = Avatar.objects.get(user=user, primary=True)
+        # Check if the avatar file actually exists and can be opened
+        if avatar.avatar:
+            try:
+                avatar.avatar.open()
+                avatar.avatar.close()
+                # Use original avatar URL - CSS handles sizing in the tooltip
+                url = avatar.avatar.url
+                if url and url.startswith(("http", "/")):
+                    return url
+            except Exception:  # noqa: BLE001, S110
+                pass  # File missing, corrupted, or other issue - fall back to Gravatar
+    except Avatar.DoesNotExist:
+        pass
+    return get_gravatar_url(user.email, size)
 
 
 @login_required
@@ -67,14 +96,30 @@ def weight_graph(request):
     """Return the weight graph as HTML."""
     entries = WeightEntry.objects.select_related("user").order_by("date")
 
-    # Group entries by user
-    user_data: dict[str, dict[str, list]] = {}
+    # Group entries by user (keyed by user.pk to handle duplicate display names)
+    user_data: dict[int, dict[str, list]] = {}
+    user_info: dict[int, dict[str, str]] = {}
+
     for entry in entries:
-        display_name = entry.user.get_display_name()
-        if display_name not in user_data:
-            user_data[display_name] = {"dates": [], "weights": []}
-        user_data[display_name]["dates"].append(entry.date)
-        user_data[display_name]["weights"].append(float(entry.weight))
+        user_pk = entry.user.pk
+        if user_pk not in user_data:
+            display_name = entry.user.get_display_name()
+            avatar_url = get_user_avatar_url(entry.user, size=40)
+            user_data[user_pk] = {"dates": [], "weights": [], "customdata": []}
+            user_info[user_pk] = {
+                "display_name": display_name,
+                "email": entry.user.email,
+                "avatar_url": avatar_url,
+            }
+        user_data[user_pk]["dates"].append(entry.date)
+        user_data[user_pk]["weights"].append(float(entry.weight))
+        user_data[user_pk]["customdata"].append(
+            {
+                "email": entry.user.email,
+                "avatar_url": user_info[user_pk]["avatar_url"],
+                "display_name": user_info[user_pk]["display_name"],
+            },
+        )
 
     # Return empty state if no data
     if not user_data:
@@ -87,14 +132,15 @@ def weight_graph(request):
     # Create Plotly figure
     fig = go.Figure()
 
-    for display_name, data in user_data.items():
+    for user_pk, data in user_data.items():
         fig.add_trace(
             go.Scatter(
                 x=data["dates"],
                 y=data["weights"],
                 mode="lines+markers",
-                name=display_name,
-                hovertemplate="%{x}<br>%{y:.1f} kg<extra></extra>",
+                name=user_info[user_pk]["display_name"],
+                customdata=data["customdata"],
+                hoverinfo="none",
             ),
         )
 
@@ -102,7 +148,7 @@ def weight_graph(request):
         title="Weight Tracking",
         xaxis_title="Date",
         yaxis_title="Weight (kg)",
-        hovermode="x unified",
+        hovermode="closest",
         legend={
             "orientation": "h",
             "yanchor": "bottom",
