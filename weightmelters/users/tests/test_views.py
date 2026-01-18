@@ -99,3 +99,34 @@ class TestUserDetailView:
         assert isinstance(response, HttpResponseRedirect)
         assert response.status_code == HTTPStatus.FOUND
         assert response.url == f"{login_url}?next=/fake-url/"
+
+    def test_avatar_displayed_on_profile(self, user: User, client):
+        """Test that avatar is displayed on user profile page."""
+        client.force_login(user)
+        response = client.get(reverse("users:detail", kwargs={"pk": user.pk}))
+
+        assert response.status_code == HTTPStatus.OK
+        content = response.content.decode()
+        # Check avatar img tag is present (uses gravatar fallback)
+        assert "<img" in content
+        assert "gravatar.com" in content or "avatar" in content.lower()
+
+    def test_change_avatar_button_for_own_profile(self, user: User, client):
+        """Test that 'Change Avatar' button appears on own profile."""
+        client.force_login(user)
+        response = client.get(reverse("users:detail", kwargs={"pk": user.pk}))
+
+        assert response.status_code == HTTPStatus.OK
+        content = response.content.decode()
+        assert "Change Avatar" in content
+        assert reverse("avatar:change") in content
+
+    def test_change_avatar_button_not_on_other_profile(self, user: User, client):
+        """Test that 'Change Avatar' button does not appear on other user's profile."""
+        other_user = UserFactory()
+        client.force_login(user)
+        response = client.get(reverse("users:detail", kwargs={"pk": other_user.pk}))
+
+        assert response.status_code == HTTPStatus.OK
+        content = response.content.decode()
+        assert "Change Avatar" not in content

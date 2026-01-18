@@ -84,6 +84,7 @@ THIRD_PARTY_APPS = [
     "allauth.mfa",
     "allauth.socialaccount",
     "django_htmx",
+    "avatar",
 ]
 
 LOCAL_APPS = [
@@ -286,6 +287,15 @@ ACCOUNT_FORMS = {"signup": "weightmelters.users.forms.UserSignupForm"}
 SOCIALACCOUNT_ADAPTER = "weightmelters.users.adapters.SocialAccountAdapter"
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
 SOCIALACCOUNT_FORMS = {"signup": "weightmelters.users.forms.UserSocialSignupForm"}
+
+
+# django-avatar
+# ------------------------------------------------------------------------------
+AVATAR_GRAVATAR_DEFAULT = "identicon"  # Fallback for no avatar
+AVATAR_MAX_AVATARS_PER_USER = 1
+AVATAR_MAX_SIZE = 1024 * 1024  # 1MB
+AVATAR_THUMB_SIZES = [(80, 80), (40, 40)]  # Thumbnail sizes
+AVATAR_CLEANUP_DELETED = True
 
 
 # Your stuff...

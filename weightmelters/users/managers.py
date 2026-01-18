@@ -10,7 +10,10 @@ class UserManager(BaseUserManager["User"]):
     """Custom user manager for email-based authentication."""
 
     def create_user(
-        self, email: str, password: str | None = None, **extra_fields
+        self,
+        email: str,
+        password: str | None = None,
+        **extra_fields,
     ) -> "User":
         """Create and save a regular user with the given email and password."""
         if not email:
@@ -22,7 +25,10 @@ class UserManager(BaseUserManager["User"]):
         return user
 
     def create_superuser(
-        self, email: str, password: str | None = None, **extra_fields
+        self,
+        email: str,
+        password: str | None = None,
+        **extra_fields,
     ) -> "User":
         """Create and save a superuser with the given email and password."""
         extra_fields.setdefault("is_staff", True)

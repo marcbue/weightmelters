@@ -20,6 +20,8 @@ urlpatterns = [
     # User management
     path("users/", include("weightmelters.users.urls", namespace="users")),
     path("accounts/", include("allauth.urls")),
+    # Avatar
+    path("avatar/", include("avatar.urls")),
     # Weights app
     path("weights/", include("weightmelters.weights.urls", namespace="weights")),
     # ...

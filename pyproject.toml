@@ -181,4 +181,5 @@ dependencies = [
     "redis==7.1.0",
     "django-htmx==1.21.0",
     "plotly==6.0.0",
+    "django-avatar>=9.0.0",
 ]
