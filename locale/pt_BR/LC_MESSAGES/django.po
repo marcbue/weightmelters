@@ -1,4 +1,4 @@
-# Translations for the My Awesome Project project
+# Translations for the Weightmelters project
 # Copyright (C) 2026 Daniel Roy Greenfeld
 # Daniel Roy Greenfeld <daniel-roy-greenfeld@example.com>, 2026.
 #

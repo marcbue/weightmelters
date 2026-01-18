@@ -153,7 +153,7 @@ dev = [
 [project]
 name = "weightmelters"
 version = "0.1.0"
-description = "Behold My Awesome Project!"
+description = "Weight challenge app for tracking daily weights"
 readme = "README.md"
 
 license = { text = "MIT" }
