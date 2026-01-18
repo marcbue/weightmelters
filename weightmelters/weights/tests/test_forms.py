@@ -2,6 +2,7 @@ import datetime
 from decimal import Decimal
 
 import pytest
+from django.utils import timezone
 
 from weightmelters.users.tests.factories import UserFactory
 from weightmelters.weights.forms import WeightEntryForm
@@ -65,4 +66,4 @@ class TestWeightEntryForm:
         initial = form.fields["date"].initial
         if callable(initial):
             initial = initial()
-        assert initial == datetime.date.today()
+        assert initial == timezone.localdate()

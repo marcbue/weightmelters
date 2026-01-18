@@ -7,6 +7,6 @@ from weightmelters.weights.models import WeightEntry
 class WeightEntryAdmin(admin.ModelAdmin):
     list_display = ["user", "date", "weight", "created_at"]
     list_filter = ["date", "user"]
-    search_fields = ["user__username"]
+    search_fields = ["user__email", "user__name"]
     date_hierarchy = "date"
     ordering = ["-date"]

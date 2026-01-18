@@ -1,6 +1,4 @@
-import datetime
-from decimal import Decimal
-
+from django.utils import timezone
 from factory import LazyAttribute
 from factory import SubFactory
 from factory.django import DjangoModelFactory
@@ -12,7 +10,7 @@ from weightmelters.weights.models import WeightEntry
 
 class WeightEntryFactory(DjangoModelFactory):
     user = SubFactory(UserFactory)
-    date = LazyAttribute(lambda _: datetime.date.today())
+    date = LazyAttribute(lambda _: timezone.localdate())
     weight = FuzzyDecimal(50.0, 150.0, precision=2)
 
     class Meta:

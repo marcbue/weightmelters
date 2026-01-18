@@ -21,13 +21,13 @@ class TestWeightEntryModel:
 
     def test_str_representation(self):
         """Test string representation of weight entry."""
-        user = UserFactory(username="testuser")
+        user = UserFactory(name="Test User", email="testuser@example.com")
         entry = WeightEntryFactory(
             user=user,
             date=datetime.date(2024, 1, 15),
             weight=Decimal("80.00"),
         )
-        assert str(entry) == "testuser - 2024-01-15: 80.00 kg"
+        assert str(entry) == "Test User - 2024-01-15: 80.00 kg"
 
     def test_unique_together_user_date(self):
         """Test that user can only have one entry per date."""

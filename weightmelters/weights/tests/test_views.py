@@ -1,9 +1,11 @@
 import datetime
 from decimal import Decimal
+from http import HTTPStatus
 
 import pytest
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from weightmelters.users.tests.factories import UserFactory
 from weightmelters.weights.models import WeightEntry
@@ -16,7 +18,7 @@ class TestWeightLogView:
         """Test that log weight view requires authentication."""
         url = reverse("weights:log")
         response = client.post(url, {"date": "2024-01-15", "weight": "75.5"})
-        assert response.status_code == 302
+        assert response.status_code == HTTPStatus.FOUND
         assert "/accounts/login/" in response["Location"]
 
     def test_log_weight_creates_entry(self, client: Client):
@@ -31,7 +33,7 @@ class TestWeightLogView:
             HTTP_HX_REQUEST="true",
         )
 
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
         entry = WeightEntry.objects.get(user=user, date=datetime.date(2024, 1, 15))
         assert entry.weight == Decimal("75.5")
 
@@ -52,10 +54,16 @@ class TestWeightLogView:
             HTTP_HX_REQUEST="true",
         )
 
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
         entry.refresh_from_db()
         assert entry.weight == Decimal("75.5")
-        assert WeightEntry.objects.filter(user=user, date=datetime.date(2024, 1, 15)).count() == 1
+        assert (
+            WeightEntry.objects.filter(
+                user=user,
+                date=datetime.date(2024, 1, 15),
+            ).count()
+            == 1
+        )
 
     def test_log_weight_invalid_data(self, client: Client):
         """Test logging with invalid data returns form with errors."""
@@ -69,7 +77,7 @@ class TestWeightLogView:
             HTTP_HX_REQUEST="true",
         )
 
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
         assert WeightEntry.objects.filter(user=user).count() == 0
 
     def test_htmx_response_contains_graph(self, client: Client):
@@ -84,7 +92,7 @@ class TestWeightLogView:
             HTTP_HX_REQUEST="true",
         )
 
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
         assert "HX-Trigger" in response.headers
 
 
@@ -94,7 +102,7 @@ class TestWeightGraphView:
         """Test that graph view requires authentication."""
         url = reverse("weights:graph")
         response = client.get(url)
-        assert response.status_code == 302
+        assert response.status_code == HTTPStatus.FOUND
         assert "/accounts/login/" in response["Location"]
 
     def test_graph_returns_html(self, client: Client):
@@ -105,13 +113,13 @@ class TestWeightGraphView:
         url = reverse("weights:graph")
         response = client.get(url)
 
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
         assert "text/html" in response["Content-Type"]
 
     def test_graph_shows_all_users_data(self, client: Client):
         """Test graph includes data from all users."""
-        user1 = UserFactory(username="user1")
-        user2 = UserFactory(username="user2")
+        user1 = UserFactory(name="User One", email="user1@example.com")
+        user2 = UserFactory(name="User Two", email="user2@example.com")
         WeightEntryFactory(user=user1, weight=Decimal("70.0"))
         WeightEntryFactory(user=user2, weight=Decimal("80.0"))
 
@@ -119,11 +127,11 @@ class TestWeightGraphView:
         url = reverse("weights:graph")
         response = client.get(url)
 
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
         content = response.content.decode()
         # Both users should appear in the graph (in legend or data)
-        assert "user1" in content
-        assert "user2" in content
+        assert "User One" in content
+        assert "User Two" in content
 
 
 @pytest.mark.django_db
@@ -133,7 +141,7 @@ class TestWeightDeleteView:
         entry = WeightEntryFactory()
         url = reverse("weights:delete", kwargs={"pk": entry.pk})
         response = client.delete(url)
-        assert response.status_code == 302
+        assert response.status_code == HTTPStatus.FOUND
 
     def test_delete_own_entry(self, client: Client):
         """Test user can delete their own entry."""
@@ -144,7 +152,7 @@ class TestWeightDeleteView:
         url = reverse("weights:delete", kwargs={"pk": entry.pk})
         response = client.delete(url, HTTP_HX_REQUEST="true")
 
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
         assert not WeightEntry.objects.filter(pk=entry.pk).exists()
 
     def test_cannot_delete_other_user_entry(self, client: Client):
@@ -157,7 +165,7 @@ class TestWeightDeleteView:
         url = reverse("weights:delete", kwargs={"pk": entry.pk})
         response = client.delete(url, HTTP_HX_REQUEST="true")
 
-        assert response.status_code == 404
+        assert response.status_code == HTTPStatus.NOT_FOUND
         assert WeightEntry.objects.filter(pk=entry.pk).exists()
 
     def test_delete_triggers_graph_refresh(self, client: Client):
@@ -182,18 +190,18 @@ class TestHomeView:
         url = reverse("home")
         response = client.get(url)
 
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
 
     def test_home_prefills_todays_weight(self, client: Client):
         """Test home page prefills form with today's weight if exists."""
         user = UserFactory()
-        today = datetime.date.today()
+        today = timezone.localdate()
         WeightEntryFactory(user=user, date=today, weight=Decimal("75.5"))
         client.force_login(user)
 
         url = reverse("home")
         response = client.get(url)
 
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
         content = response.content.decode()
         assert "75.5" in content or "75.50" in content

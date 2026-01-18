@@ -22,4 +22,4 @@ class WeightEntry(models.Model):
         verbose_name_plural = "Weight Entries"
 
     def __str__(self):
-        return f"{self.user.username} - {self.date}: {self.weight} kg"
+        return f"{self.user.name or self.user.email} - {self.date}: {self.weight} kg"

@@ -1,14 +1,14 @@
 import datetime
 import json
 
+import plotly.graph_objects as go
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import render
+from django.utils import timezone
 from django.views.decorators.http import require_GET
 from django.views.decorators.http import require_http_methods
-
-import plotly.graph_objects as go
 
 from weightmelters.weights.forms import WeightEntryForm
 from weightmelters.weights.models import WeightEntry
@@ -21,7 +21,13 @@ def log_weight(request):
     date_str = request.POST.get("date")
     if date_str:
         try:
-            date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+            date = (
+                datetime.datetime.strptime(date_str, "%Y-%m-%d")
+                .replace(
+                    tzinfo=datetime.UTC,
+                )
+                .date()
+            )
             existing_entry = WeightEntry.objects.filter(
                 user=request.user,
                 date=date,
@@ -62,24 +68,24 @@ def weight_graph(request):
     # Group entries by user
     user_data: dict[str, dict[str, list]] = {}
     for entry in entries:
-        username = entry.user.username
-        if username not in user_data:
-            user_data[username] = {"dates": [], "weights": []}
-        user_data[username]["dates"].append(entry.date)
-        user_data[username]["weights"].append(float(entry.weight))
+        display_name = entry.user.get_display_name()
+        if display_name not in user_data:
+            user_data[display_name] = {"dates": [], "weights": []}
+        user_data[display_name]["dates"].append(entry.date)
+        user_data[display_name]["weights"].append(float(entry.weight))
 
     # Create Plotly figure
     fig = go.Figure()
 
-    for username, data in user_data.items():
+    for display_name, data in user_data.items():
         fig.add_trace(
             go.Scatter(
                 x=data["dates"],
                 y=data["weights"],
                 mode="lines+markers",
-                name=username,
+                name=display_name,
                 hovertemplate="%{x}<br>%{y:.1f} kg<extra></extra>",
-            )
+            ),
         )
 
     fig.update_layout(
@@ -87,7 +93,13 @@ def weight_graph(request):
         xaxis_title="Date",
         yaxis_title="Weight (kg)",
         hovermode="x unified",
-        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
+        legend={
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": 1.02,
+            "xanchor": "right",
+            "x": 1,
+        },
         margin={"l": 40, "r": 40, "t": 60, "b": 40},
         height=400,
     )
@@ -116,7 +128,7 @@ def delete_weight(request, pk):
 
 def get_weight_form_context(user):
     """Get the context for the weight form, prefilled with today's entry if exists."""
-    today = datetime.date.today()
+    today = timezone.localdate()
     existing_entry = WeightEntry.objects.filter(user=user, date=today).first()
 
     if existing_entry:
