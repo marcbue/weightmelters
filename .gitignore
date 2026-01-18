@@ -272,3 +272,6 @@ weightmelters/media/
 
 .pytest_cache/
 .envs
+
+# SQLite database
+*.sqlite3
