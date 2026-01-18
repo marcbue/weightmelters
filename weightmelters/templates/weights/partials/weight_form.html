@@ -1,0 +1,39 @@
+{% load crispy_forms_tags %}
+
+<form hx-post="{% url 'weights:log' %}"
+      hx-target="#weight-form-container"
+      hx-swap="innerHTML"
+      class="mb-4">
+  {% csrf_token %}
+  {% if success %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      Weight logged successfully!
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endif %}
+  <div class="row g-3 align-items-end">
+    <div class="col-auto">
+      <label for="id_date" class="form-label">Date</label>
+      {{ form.date }}
+      {% if form.date.errors %}
+        <div class="invalid-feedback d-block">
+          {% for error in form.date.errors %}{{ error }}{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+    <div class="col-auto">
+      <label for="id_weight" class="form-label">Weight (kg)</label>
+      {{ form.weight }}
+      {% if form.weight.errors %}
+        <div class="invalid-feedback d-block">
+          {% for error in form.weight.errors %}{{ error }}{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary">
+        Log Weight
+      </button>
+    </div>
+  </div>
+</form>

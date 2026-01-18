@@ -2,7 +2,7 @@
 set -e
 
 # Copy host gitconfig if available
-if [ -f "${HOME}/.gitconfig" ]; then 
+if [ -f "${HOME}/.gitconfig" ]; then
     cp "${HOME}/.gitconfig" /root/.gitconfig 2>/dev/null || true
 fi
 

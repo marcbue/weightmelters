@@ -6,8 +6,10 @@ from django.urls import path
 from django.views import defaults as default_views
 from django.views.generic import TemplateView
 
+from weightmelters.weights.home_views import home
+
 urlpatterns = [
-    path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
+    path("", home, name="home"),
     path(
         "about/",
         TemplateView.as_view(template_name="pages/about.html"),
@@ -18,7 +20,8 @@ urlpatterns = [
     # User management
     path("users/", include("weightmelters.users.urls", namespace="users")),
     path("accounts/", include("allauth.urls")),
-    # Your stuff: custom urls includes go here
+    # Weights app
+    path("weights/", include("weightmelters.weights.urls", namespace="weights")),
     # ...
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),

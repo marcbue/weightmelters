@@ -6,6 +6,17 @@ from .base import *  # noqa: F403
 from .base import TEMPLATES
 from .base import env
 
+# DATABASES
+# ------------------------------------------------------------------------------
+# Use SQLite for testing when PostgreSQL is not available
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": ":memory:",
+        "ATOMIC_REQUESTS": True,
+    },
+}
+
 # GENERAL
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#secret-key

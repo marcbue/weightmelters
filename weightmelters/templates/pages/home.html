@@ -1,3 +1,48 @@
 {% extends "base.html" %}
 
+{% load static %}
 
+{% block content %}
+  {% if user.is_authenticated %}
+    <h1 class="mb-4">Weight Tracker</h1>
+    <div id="weight-form-container">{% include "weights/partials/weight_form.html" %}</div>
+    <h2 class="mt-4">Progress</h2>
+    <div id="graph-container"
+         hx-get="{% url 'weights:graph' %}"
+         hx-trigger="load, refreshGraph from:body"
+         hx-swap="innerHTML">
+      <div class="d-flex justify-content-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    </div>
+    <h2 class="mt-4">Your Recent Entries</h2>
+    <div id="entries-container"
+         hx-get="{% url 'weights:entries' %}"
+         hx-trigger="load, refreshEntries from:body"
+         hx-swap="innerHTML">
+      <div class="d-flex justify-content-center py-3">
+        <div class="spinner-border spinner-border-sm text-secondary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="text-center py-5">
+      <h1>Weight Tracker</h1>
+      <p class="lead">Track your weight and see your progress alongside other participants.</p>
+      <div class="mt-4">
+        <a href="{% url 'account_login' %}" class="btn btn-primary btn-lg me-2">Sign In</a>
+        <a href="{% url 'account_signup' %}"
+           class="btn btn-outline-primary btn-lg">Sign Up</a>
+      </div>
+    </div>
+  {% endif %}
+{% endblock content %}
+{% block javascript %}
+  {{ block.super }}
+  <script src="https://unpkg.com/htmx.org@2.0.4"
+          integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+          crossorigin="anonymous"></script>
+{% endblock javascript %}

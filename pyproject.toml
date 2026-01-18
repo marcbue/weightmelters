@@ -179,4 +179,6 @@ dependencies = [
     "psycopg[c]==3.3.2",
     "python-slugify==8.0.4",
     "redis==7.1.0",
+    "django-htmx==1.21.0",
+    "plotly==6.0.0",
 ]
