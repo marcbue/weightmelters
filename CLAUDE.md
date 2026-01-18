@@ -1,87 +1,76 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
-Weight tracking Django web application built from Cookiecutter Django template. Uses Python 3.13, Django 5.2.10, and UV for package management.
+Weight challenge app where users log daily weights and view a shared Plotly graph of all participants. Built with Django 5.2, HTMX, and Plotly.
+
+**Stack:** Python 3.13, Django 5.2, HTMX, Plotly, Bootstrap 5, django-allauth, UV package manager
+
+## Development Approach
+
+**Test-Driven Development (TDD):** Write tests before implementing features. For each new feature:
+1. Write failing tests first
+2. Implement the minimum code to pass
+3. Refactor as needed
 
 ## Common Commands
 
-All commands use UV as the package manager:
-
 ```bash
-# Install dependencies
-uv sync --locked
-
-# Run development server
-uv run python manage.py runserver
-
-# Run all tests
-uv run pytest
-
-# Run a single test file
-uv run pytest tests/path/to/test_file.py
-
-# Run a specific test
-uv run pytest tests/path/to/test_file.py::test_function_name
-
-# Run tests with coverage
-uv run coverage run -m pytest && uv run coverage html
-
-# Type checking
-uv run mypy weightmelters
-
-# Linting and formatting (via pre-commit)
-uv run pre-commit run --all-files
-
-# Database migrations
-uv run python manage.py migrate
+uv sync --locked              # Install dependencies
+uv run pytest                 # Run all tests
+uv run pytest path/to/test.py # Run specific test file
+uv run mypy weightmelters     # Type checking
+uv run pre-commit run --all-files  # Linting/formatting
+uv run python manage.py runserver  # Dev server
 uv run python manage.py makemigrations
-
-# Create superuser
-uv run python manage.py createsuperuser
-
-# Build documentation with live reload
-cd docs && uv run make livehtml
+uv run python manage.py migrate
 ```
 
-## Architecture
+## Project Structure
 
-### Settings Structure
-Django settings are environment-based in `config/settings/`:
-- `base.py` - Shared settings
-- `local.py` - Development (DEBUG=True, console email, debug toolbar)
-- `test.py` - Testing (fast password hasher, in-memory email)
-- `production.py` - Production (Redis cache, S3 storage, Sentry)
+```
+config/
+├── settings/          # Environment-based settings (base, local, test, production)
+└── urls.py            # Root URL routing
 
-Settings module is controlled by `DJANGO_SETTINGS_MODULE` env var (defaults to `config.settings.local`).
+weightmelters/
+├── weights/           # Core weight tracking app
+│   ├── models.py      # WeightEntry model
+│   ├── views.py       # HTMX views (log, graph, delete, entries)
+│   ├── home_views.py  # Homepage view with form prefilling
+│   ├── forms.py       # WeightEntryForm with validation
+│   ├── urls.py        # /weights/ routes
+│   └── tests/         # Model, form, view tests
+├── users/             # Custom User model with name field
+├── templates/
+│   ├── pages/home.html           # Main page with form + graph
+│   └── weights/partials/         # HTMX partials (form, graph, entries)
+└── conftest.py        # Shared pytest fixtures
+```
 
-### Application Structure
-- `config/` - Django configuration, URLs, WSGI
-- `weightmelters/users/` - Custom User model with `name` field (replaces first_name/last_name)
-- `weightmelters/templates/` - Django templates with Bootstrap 5 + crispy-forms
-- `weightmelters/static/` - CSS, JS, images
-- `tests/` - Root-level tests
-- `docs/` - Sphinx RST documentation
+## Key Files
 
-### Custom User Model
-Located at `weightmelters/users/models.py`. Extends `AbstractUser` with a unified `name` field. User-related views use login-required mixins.
+- `weightmelters/weights/models.py` - WeightEntry (user, date, weight) with unique_together constraint
+- `weightmelters/weights/views.py` - HTMX endpoints returning partials, triggers graph refresh
+- `weightmelters/templates/pages/home.html` - Homepage with HTMX attributes for dynamic updates
+- `config/settings/test.py` - Uses SQLite for testing
 
-### URL Routing
-Root URLs in `config/urls.py`. User URLs namespaced under `/users/`:
-- `~redirect/` - Redirect to current user's profile
-- `~update/` - Update current user
-- `<username>/` - View user by username
+## URL Routes
 
-### Testing
-Uses pytest with pytest-django. Test settings in `config/settings/test`. Factories use factory-boy in `weightmelters/users/tests/factories.py`. Fixtures defined in `weightmelters/conftest.py`.
+- `/` - Homepage (form + graph for authenticated users)
+- `/weights/log/` - POST weight entry (HTMX)
+- `/weights/graph/` - GET Plotly graph partial
+- `/weights/entries/` - GET user's entries list
+- `/weights/<pk>/delete/` - DELETE entry (HTMX)
 
-### Code Quality Tools
-- **Ruff** - Linting and formatting (config in pyproject.toml)
+## Code Quality
+
+- **Ruff** - Linting and formatting
 - **MyPy** - Type checking with django-stubs
-- **djLint** - Template linting (profile: django)
+- **djLint** - Template linting
 - **Pre-commit** - Runs all checks automatically
 
-### Authentication
-Uses django-allauth with MFA support. Account templates in `weightmelters/templates/account/`.
+## Git Commits
+
+- Do not include AI model attribution or "Co-Authored-By" lines in commit messages
+- Keep commit messages concise and focused on the "why"
