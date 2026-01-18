@@ -1,1 +1,7 @@
-{{ graph_html|safe }}
+{% if graph_html %}
+  {{ graph_html|safe }}
+{% else %}
+  <div class="text-center text-muted py-5">
+    <p>No weight entries yet. Log your first weight to see the graph.</p>
+  </div>
+{% endif %}

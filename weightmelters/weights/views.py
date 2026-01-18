@@ -49,7 +49,9 @@ def log_weight(request):
             "weights/partials/weight_form.html",
             {"form": WeightEntryForm(instance=entry), "success": True},
         )
-        response["HX-Trigger"] = json.dumps({"refreshGraph": True})
+        response["HX-Trigger"] = json.dumps(
+            {"refreshGraph": True, "refreshEntries": True},
+        )
         return response
 
     return render(
@@ -73,6 +75,14 @@ def weight_graph(request):
             user_data[display_name] = {"dates": [], "weights": []}
         user_data[display_name]["dates"].append(entry.date)
         user_data[display_name]["weights"].append(float(entry.weight))
+
+    # Return empty state if no data
+    if not user_data:
+        return render(
+            request,
+            "weights/partials/graph.html",
+            {"graph_html": None},
+        )
 
     # Create Plotly figure
     fig = go.Figure()
