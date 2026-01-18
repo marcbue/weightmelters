@@ -114,8 +114,8 @@ def weight_graph(request):
         height=400,
     )
 
-    # Convert to HTML div
-    graph_html = fig.to_html(full_html=False, include_plotlyjs="cdn")
+    # Convert to HTML div (Plotly.js is loaded globally in home.html)
+    graph_html = fig.to_html(full_html=False, include_plotlyjs=False)
 
     return render(
         request,

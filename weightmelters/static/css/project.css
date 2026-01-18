@@ -11,3 +11,33 @@
   background-color: #f2dede;
   border-color: #eed3d7;
 }
+
+/* Avatar Cropper Styles */
+#cropper-wrapper {
+  max-height: 400px;
+  overflow: hidden;
+}
+
+#cropper-wrapper img {
+  max-width: 100%;
+  display: block;
+}
+
+.avatar-preview-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.avatar-preview-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #dee2e6;
+  background-color: #f8f9fa;
+}
+
+/* Make avatar images round on profile page */
+#user-avatar img {
+  border-radius: 50%;
+}

@@ -6,11 +6,27 @@
   User:
   {{ object.name|default:object.email }}
 {% endblock title %}
+{% block css %}
+  {{ block.super }}
+  <!-- Cropper.js CSS -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css"
+        integrity="sha512-UtLOu9C7NuThQhuXXrGwx9Jb/z9zPQJctuAgNUBK3Z6kkSYT9wJ+2+dh6klS+TDBCV9kNPBbAxbVD+vCcfGPaA=="
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer" />
+{% endblock css %}
+{% block javascript %}
+  <!-- HTMX - load before parent scripts -->
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <!-- Cropper.js - load before parent scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+  {{ block.super }}
+{% endblock javascript %}
 {% block content %}
   <div class="container">
     <div class="row">
       <div class="col-sm-12">
-        <div class="text-center mb-3">{% avatar object 80 %}</div>
+        <div class="text-center mb-3" id="user-avatar">{% avatar object 80 %}</div>
         <h2>{{ object.name|default:object.email }}</h2>
         {% if object.name %}<p>{{ object.email }}</p>{% endif %}
       </div>
@@ -24,12 +40,53 @@
              href="{% url 'account_email' %}"
              role="button">E-Mail</a>
           <a class="btn btn-primary" href="{% url 'mfa_index' %}" role="button">MFA</a>
-          <a class="btn btn-outline-secondary"
-             href="{% url 'avatar:change' %}"
-             role="button">Change Avatar</a>
+          <button type="button"
+                  class="btn btn-outline-secondary"
+                  data-bs-toggle="modal"
+                  data-bs-target="#avatarCropModal"
+                  hx-get="{% url 'users:avatar-upload' %}"
+                  hx-target="#avatar-modal-content"
+                  hx-trigger="click">Change Avatar</button>
         </div>
       </div>
       <!-- End Action buttons -->
     {% endif %}
   </div>
 {% endblock content %}
+{% block modal %}
+  <!-- Avatar Crop Modal -->
+  <div class="modal fade"
+       id="avatarCropModal"
+       tabindex="-1"
+       aria-labelledby="avatarCropModalLabel"
+       aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="avatarCropModalLabel">Change Avatar</h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="avatar-modal-content">
+          <div class="text-center">
+            <div class="spinner-border" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock modal %}
+{% block inline_javascript %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Reset modal content when hidden
+      document.getElementById('avatarCropModal').addEventListener('hidden.bs.modal', function() {
+        document.getElementById('avatar-modal-content').innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+      });
+    });
+  </script>
+{% endblock inline_javascript %}

@@ -1,0 +1,62 @@
+<div id="avatar-crop-form">
+  <div class="mb-3">
+    <label for="avatar-input" class="form-label">Select an image to crop</label>
+    <input type="file" class="form-control" id="avatar-input" accept="image/*" />
+  </div>
+  {% if form.errors %}
+    <div class="alert alert-danger">
+      {% for field in form %}
+        {% for error in field.errors %}<p>{{ error }}</p>{% endfor %}
+      {% endfor %}
+      {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+  {% endif %}
+  <div id="cropper-container" class="d-none mb-3">
+    <div id="cropper-wrapper">
+      <img id="cropper-image" src="" alt="Image to crop" />
+    </div>
+    <div class="mt-2">
+      <button type="button"
+              class="btn btn-sm btn-outline-secondary"
+              id="rotate-left">
+        <svg xmlns="http://www.w3.org/2000/svg"
+             width="16"
+             height="16"
+             fill="currentColor"
+             viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z" />
+          <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z" />
+        </svg>
+        Rotate Left
+      </button>
+      <button type="button"
+              class="btn btn-sm btn-outline-secondary"
+              id="rotate-right">
+        <svg xmlns="http://www.w3.org/2000/svg"
+             width="16"
+             height="16"
+             fill="currentColor"
+             viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z" />
+          <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z" />
+        </svg>
+        Rotate Right
+      </button>
+    </div>
+  </div>
+  <div id="preview-container" class="d-none mb-3">
+    <label class="form-label">Preview</label>
+    <div class="avatar-preview-wrapper">
+      <div id="avatar-preview" class="avatar-preview-circle"></div>
+    </div>
+  </div>
+  <form id="avatar-upload-form"
+        hx-post="{% url 'users:avatar-upload' %}"
+        hx-encoding="multipart/form-data"
+        hx-target="#avatar-modal-content"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <input type="hidden" name="avatar" id="avatar-blob-input" />
+    <button type="submit" class="btn btn-primary d-none" id="upload-avatar-btn">Upload Avatar</button>
+  </form>
+</div>

@@ -1,0 +1,14 @@
+<div class="text-center">
+  <div class="alert alert-success">Avatar updated successfully!</div>
+  <p>Your avatar has been changed. The page will refresh to show your new avatar.</p>
+  <script>
+    // Close modal and reload to show updated avatar
+    setTimeout(function() {
+      var modal = bootstrap.Modal.getInstance(document.getElementById('avatarCropModal'));
+      if (modal) {
+        modal.hide();
+      }
+      window.location.reload();
+    }, 1000);
+  </script>
+</div>

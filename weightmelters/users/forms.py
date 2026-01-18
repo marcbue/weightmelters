@@ -1,10 +1,30 @@
 from allauth.account.forms import SignupForm
 from allauth.socialaccount.forms import SignupForm as SocialSignupForm
+from django import forms
 from django.contrib.auth import forms as admin_forms
 from django.forms import EmailField
 from django.utils.translation import gettext_lazy as _
 
 from .models import User
+
+MAX_AVATAR_SIZE = 1024 * 1024  # 1MB
+
+
+class CroppedAvatarForm(forms.Form):
+    """Form for uploading a cropped avatar image."""
+
+    avatar = forms.ImageField(
+        label=_("Avatar"),
+        help_text=_("Upload an image (max 1MB)."),
+    )
+
+    def clean_avatar(self):
+        avatar = self.cleaned_data.get("avatar")
+        if avatar:
+            if avatar.size > MAX_AVATAR_SIZE:
+                msg = _("Avatar file is too large. Maximum size is 1MB.")
+                raise forms.ValidationError(msg)
+        return avatar
 
 
 class UserAdminChangeForm(admin_forms.UserChangeForm):

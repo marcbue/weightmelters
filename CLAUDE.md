@@ -70,6 +70,15 @@ weightmelters/
 - **djLint** - Template linting
 - **Pre-commit** - Runs all checks automatically
 
+## HTMX + JavaScript Libraries
+
+When using JavaScript libraries (like Plotly) in HTMX partials:
+
+- **Load libraries globally** in the parent template (e.g., `home.html`), not in HTMX partials
+- When HTMX swaps in HTML containing `<script>` tags, external scripts load asynchronously but inline scripts execute immediately, causing "X is not defined" errors
+- For Plotly: use `fig.to_html(full_html=False, include_plotlyjs=False)` since Plotly.js is loaded in `home.html`
+- All scripts in templates should use the `defer` attribute to match the pattern in `base.html`
+
 ## Git Commits
 
 - Do not include AI model attribution or "Co-Authored-By" lines in commit messages
