@@ -1,96 +1,223 @@
-from datetime import date
+from __future__ import annotations
+
+import json
+from datetime import datetime
 from decimal import Decimal
+from decimal import InvalidOperation
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 from django.core.management.base import BaseCommand
 
 from weightmelters.users.models import User
 from weightmelters.weights.models import WeightEntry
 
-# Weight data: (year, month, day, Moldir, Marc, Roman, Andy, Theresa, Patricia)
-# Empty string means no entry for that user on that day
-WEIGHT_DATA = [
-    (2026, 1, 6, "67.6", "76.95", "", "", "", ""),
-    (2026, 1, 7, "67.2", "76.65", "", "", "", ""),
-    (2026, 1, 8, "67.5", "76.35", "", "", "", ""),
-    (2026, 1, 9, "67.6", "76.4", "", "", "", ""),
-    (2026, 1, 10, "66.8", "76.3", "", "", "", ""),
-    (2026, 1, 11, "66.9", "76.3", "", "", "", ""),
-    (2026, 1, 12, "66.7", "76.2", "", "", "", ""),
-    (2026, 1, 13, "66.3", "75.4", "", "", "", ""),
-    (2026, 1, 14, "66.1", "75.1", "80", "79.1", "65", "61.7"),
-    (2026, 1, 15, "66", "74.65", "79.9", "78.9", "65.2", "61.55"),
-    (2026, 1, 16, "65.9", "75.75", "80.2", "79.3", "65.5", "61.2"),
-    (2026, 1, 17, "66", "75.35", "80.6", "", "65.6", "60.45"),
-    (2026, 1, 18, "66.2", "76.6", "80.4", "", "65.6", "60.7"),
-    (2026, 1, 19, "66.2", "75", "", "79.7", "65.2", "60.8"),
-    (2026, 1, 20, "65.8", "74.2", "80.3", "79.6", "65.4", "60.9"),
-    (2026, 1, 21, "65.9", "74.7", "79.8", "78.6", "65.2", "60.8"),
-    (2026, 1, 22, "65.3", "", "79.5", "79", "65.1", ""),
-    (2026, 1, 23, "", "", "79.5", "", "65.4", ""),
-    (2026, 1, 24, "64.5", "", "80.3", "79", "65", ""),
-    (2026, 1, 25, "", "", "80", "", "", ""),
-    (2026, 1, 26, "65.6", "73.7", "80.2", "", "", ""),
-    (2026, 1, 27, "65.1", "73.65", "80.6", "78.5", "66.1", ""),
-    (2026, 1, 28, "65.6", "73.9", "79.5", "", "", "61.8"),
-    (2026, 1, 29, "65.4", "73.9", "79.8", "79.6", "65.7", "61.85"),
-    (2026, 1, 30, "65", "73.5", "79.2", "", "", "60.9"),
-    (2026, 1, 31, "65.8", "73.95", "80.5", "", "65.4", "61.05"),
-    (2026, 2, 1, "", "", "80.9", "", "65.2", ""),
-    (2026, 2, 2, "65.5", "", "80.2", "79.1", "64.7", "62.15"),
-    (2026, 2, 3, "65.5", "74.6", "80", "78.2", "65.1", "61.05"),
-    (2026, 2, 4, "65.1", "73.9", "79.5", "78.1", "", "60.6"),
-    (2026, 2, 5, "64.5", "72.8", "79.5", "", "", "61.05"),
-]
+if TYPE_CHECKING:
+    from argparse import ArgumentParser
 
-USER_NAMES = ["Moldir", "Marc", "Roman", "Andy", "Theresa", "Patricia"]
+
+DEFAULT_FILE = "data/weight_data.json"
 
 
 class Command(BaseCommand):
-    help = "Load historical weight data for existing users"
+    help = "Load weight data from a JSON file for existing users"
 
-    def handle(self, *args, **options):
-        # Look up users by name
+    def add_arguments(self, parser: ArgumentParser) -> None:
+        parser.add_argument(
+            "--file",
+            type=str,
+            default=DEFAULT_FILE,
+            help=f"Path to JSON file (default: {DEFAULT_FILE})",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Validate data without saving to database",
+        )
+
+    def handle(self, *args, **options) -> None:
+        file_path = Path(options["file"])
+        dry_run = options["dry_run"]
+
+        data = self._load_json_file(file_path)
+        if data is None:
+            return
+
+        if not self._validate_structure(data):
+            return
+
+        user_names = data["users"]
+        entries = data["entries"]
+
+        users = self._lookup_users(user_names)
+        if users is None:
+            return
+
+        entries_to_create = self._process_entries(entries, users, user_names)
+        if entries_to_create is None:
+            return
+
+        if dry_run:
+            self._print_dry_run(entries_to_create)
+            return
+
+        self._save_entries(entries_to_create)
+
+    def _load_json_file(self, file_path: Path) -> dict | None:
+        """Load and parse JSON file, returning None on error."""
+        if not file_path.exists():
+            self.stderr.write(self.style.ERROR(f"File not found: {file_path}"))
+            return None
+
+        try:
+            with file_path.open() as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            self.stderr.write(self.style.ERROR(f"Invalid JSON in {file_path}: {e}"))
+            return None
+
+    def _validate_structure(self, data: dict) -> bool:
+        """Validate JSON has required keys."""
+        if "users" not in data:
+            self.stderr.write(self.style.ERROR("Missing required key: 'users'"))
+            return False
+
+        if "entries" not in data:
+            self.stderr.write(self.style.ERROR("Missing required key: 'entries'"))
+            return False
+
+        return True
+
+    def _lookup_users(self, user_names: list[str]) -> dict[str, User] | None:
+        """Look up users by name, returning None on error."""
         users = {}
-        for name in USER_NAMES:
+        for name in user_names:
             try:
                 users[name] = User.objects.get(name__iexact=name)
                 self.stdout.write(f"Found user: {name}")
             except User.DoesNotExist:
                 self.stderr.write(self.style.ERROR(f"User not found: {name}"))
-                return
+                return None
             except User.MultipleObjectsReturned:
-                self.stderr.write(self.style.ERROR(f"Multiple users found: {name}"))
-                return
+                self.stderr.write(
+                    self.style.ERROR(f"Multiple users found with name: {name}"),
+                )
+                return None
+        return users
 
-        # Insert weight entries
+    def _process_entries(
+        self,
+        entries: list[dict],
+        users: dict[str, User],
+        user_names: list[str],
+    ) -> list[dict] | None:
+        """Process JSON entries into weight data, returning None on error."""
+        entries_to_create = []
+
+        for entry in entries:
+            date_str = entry.get("date")
+            if not date_str:
+                self.stderr.write(self.style.ERROR("Entry missing 'date' field"))
+                return None
+
+            try:
+                entry_date = datetime.strptime(date_str, "%Y-%m-%d").date()  # noqa: DTZ007
+            except ValueError:
+                self.stderr.write(
+                    self.style.ERROR(
+                        f"Invalid date format: {date_str} (expected YYYY-MM-DD)",
+                    ),
+                )
+                return None
+
+            weights = entry.get("weights", {})
+            result = self._process_weights(
+                weights,
+                entry_date,
+                users,
+                user_names,
+                date_str,
+            )
+            if result is None:
+                return None
+            entries_to_create.extend(result)
+
+        return entries_to_create
+
+    def _process_weights(
+        self,
+        weights: dict[str, str],
+        entry_date,
+        users: dict[str, User],
+        user_names: list[str],
+        date_str: str,
+    ) -> list[dict] | None:
+        """Process weights for a single date, returning None on error."""
+        result = []
+        for user_name, weight_str in weights.items():
+            if user_name not in users:
+                self.stderr.write(
+                    self.style.ERROR(
+                        f"Unknown user in weights: {user_name} "
+                        f"(not in users list: {user_names})",
+                    ),
+                )
+                return None
+
+            if not weight_str:
+                continue
+
+            try:
+                weight = Decimal(weight_str)
+            except InvalidOperation:
+                self.stderr.write(
+                    self.style.ERROR(
+                        f"Invalid weight value for {user_name} on {date_str}: "
+                        f"'{weight_str}'",
+                    ),
+                )
+                return None
+
+            result.append(
+                {
+                    "user": users[user_name],
+                    "date": entry_date,
+                    "weight": weight,
+                },
+            )
+        return result
+
+    def _print_dry_run(self, entries_to_create: list[dict]) -> None:
+        """Print dry run summary."""
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Dry run: Would process {len(entries_to_create)} weight entries",
+            ),
+        )
+        for entry_data in entries_to_create:
+            self.stdout.write(
+                f"  {entry_data['user'].name} on {entry_data['date']}: "
+                f"{entry_data['weight']} kg",
+            )
+
+    def _save_entries(self, entries_to_create: list[dict]) -> None:
+        """Save entries to database."""
         created_count = 0
         updated_count = 0
 
-        for row in WEIGHT_DATA:
-            year, month, day = row[0], row[1], row[2]
-            entry_date = date(year, month, day)
-
-            for i, name in enumerate(USER_NAMES):
-                weight_str = row[i + 3]
-                if not weight_str:
-                    continue
-
-                weight = Decimal(weight_str)
-                user = users[name]
-
-                _, created = WeightEntry.objects.update_or_create(
-                    user=user,
-                    date=entry_date,
-                    defaults={"weight": weight},
-                )
-
-                if created:
-                    created_count += 1
-                else:
-                    updated_count += 1
+        for entry_data in entries_to_create:
+            _, created = WeightEntry.objects.update_or_create(
+                user=entry_data["user"],
+                date=entry_data["date"],
+                defaults={"weight": entry_data["weight"]},
+            )
+            if created:
+                created_count += 1
+            else:
+                updated_count += 1
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Done! Created: {created_count}, Updated: {updated_count}"
-            )
+                f"Done! Created: {created_count}, Updated: {updated_count}",
+            ),
         )

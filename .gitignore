@@ -275,3 +275,7 @@ weightmelters/media/
 
 # SQLite database
 *.sqlite3
+
+# Weight data files
+/data/*.json
+!/data/*.example.json
